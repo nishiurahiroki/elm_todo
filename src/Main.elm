@@ -100,7 +100,7 @@ view model =
       viewTop model
 
     NotFoundPage ->
-      div [] [ text "not found." ]
+      viewNotFound model
 
 viewLogin : Model -> Html Msg
 viewLogin model =
@@ -137,6 +137,10 @@ viewTop model =
       ]
     ]
   ]
+
+viewNotFound : Model -> Html Msg
+viewNotFound model =
+  div [] [ text "Not found page." ]
 
 subscriptions : Model -> Sub Msg
 subscriptions model = Sub.none
