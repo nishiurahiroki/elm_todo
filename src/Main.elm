@@ -15,8 +15,7 @@ type alias Model =
     key : Nav.Key,
     url : Url.Url,
     loginUserId : String,
-    loginUserPassword : String,
-    currentPage : Route
+    loginUserPassword : String
   }
 
 type Route =
@@ -55,8 +54,7 @@ init flags url key =
       loginUserId = "",
       loginUserPassword = "",
       url = url,
-      key = key,
-      currentPage = LoginPage
+      key = key
     },
     Cmd.none
   )
