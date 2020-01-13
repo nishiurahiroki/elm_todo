@@ -6,6 +6,8 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 
 
+-- TODO 仮実装
+
 type alias Model =
   {
     count : Int
