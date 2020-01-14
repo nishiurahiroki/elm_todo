@@ -8,8 +8,6 @@ import Html.Events exposing (..)
 import Url
 import Url.Parser exposing (Parser, (</>), int, map, oneOf, s, string, top)
 
--- TODO change Browser.application
-
 type alias Model =
   {
     key : Nav.Key,
