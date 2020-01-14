@@ -1,4 +1,4 @@
-module Main exposing (..)
+port module Main exposing (..)
 
 import Browser
 import Browser.Navigation as Nav
@@ -15,8 +15,19 @@ type alias Model =
     key : Nav.Key,
     url : Url.Url,
     loginUserId : String,
-    loginUserPassword : String
+    loginUserPassword : String,
+    isLoginFail : Bool
   }
+
+type alias LoginInfo =
+  {
+    userId : String,
+    password : String,
+    isLoggedIn : Bool
+  }
+
+port submitLoginInfo : LoginInfo -> Cmd msg
+port getLoginResult : (LoginInfo -> msg) -> Sub msg
 
 type Route =
   LoginPage |
@@ -43,7 +54,8 @@ toRoute string =
 type Msg =
   InputLoginUserIdText   String |
   InputLoginPasswordText String |
-  Login |
+  SubmitLoginInfo String String |
+  Login LoginInfo |
   UrlChanged  Url.Url |
   LinkClicked Browser.UrlRequest
 
@@ -54,7 +66,8 @@ init flags url key =
       loginUserId = "",
       loginUserPassword = "",
       url = url,
-      key = key
+      key = key,
+      isLoginFail = False
     },
     Cmd.none
   )
@@ -85,10 +98,23 @@ update msg model =
     InputLoginPasswordText password ->
       ({ model | loginUserPassword = password }, Cmd.none)
 
-    Login -> -- TODO success or failure.
-      ( model,
-        Nav.load "/top"
-      )
+    SubmitLoginInfo userId password ->
+      (model, submitLoginInfo {
+        userId = userId,
+        password = password,
+        isLoggedIn = False
+      })
+
+    Login loginResult -> -- TODO success or failure.
+      if loginResult.isLoggedIn then
+        ( {model | isLoginFail = False},
+          Nav.load "/top"
+        )
+      else
+        ( {model | isLoginFail = True},
+          Cmd.none
+        )
+
 
 view : Model -> Html Msg
 view model =
@@ -104,20 +130,24 @@ view model =
 
 viewLogin : Model -> Html Msg
 viewLogin model =
-  div []
-    [
-      div [] [
-        text "ユーザーID : ",
-        input [ type_ "text", value model.loginUserId, onInput InputLoginUserIdText ] []
-      ],
-      div [] [
-        text "パスワード : ",
-        input [ type_ "password", value model.loginUserPassword, onInput InputLoginPasswordText ] []
-      ],
-      div [] [
-        button [ onClick Login ] [ text "ログイン" ]
+  let
+    errorMessageText = if model.isLoginFail then div [] [ text "ログインに失敗しました" ] else text ""
+  in
+    div []
+      [
+        div [] [
+          text "ユーザーID : ",
+          input [ type_ "text", value model.loginUserId, onInput InputLoginUserIdText ] []
+        ],
+        div [] [
+          text "パスワード : ",
+          input [ type_ "password", value model.loginUserPassword, onInput InputLoginPasswordText ] []
+        ],
+        div [] [
+          button [ onClick <| SubmitLoginInfo model.loginUserId model.loginUserPassword ] [ text "ログイン" ]
+        ],
+        errorMessageText
       ]
-    ]
 
 viewTop : Model -> Html Msg
 viewTop model =
@@ -143,7 +173,8 @@ viewNotFound model =
   div [] [ text "Not found page." ]
 
 subscriptions : Model -> Sub Msg
-subscriptions model = Sub.none
+subscriptions model =
+  Sub.batch [ getLoginResult Login ]
 
 
 main : Program () Model Msg

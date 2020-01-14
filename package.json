@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "webpack",
-    "dev" : "webpack-dev-server --hot --colors --port 80"
+    "dev": "webpack-dev-server --hot --colors --port 80"
   },
   "author": "",
   "license": "ISC",
@@ -22,5 +22,9 @@
     "webpack-cli": "^3.3.10",
     "webpack-dev-server": "^3.10.1",
     "webpack-merge": "^4.2.2"
+  },
+  "dependencies": {
+    "firebase": "^7.6.2",
+    "firebase-admin": "^8.9.0"
   }
 }

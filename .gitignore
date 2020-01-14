@@ -2,3 +2,4 @@ node_modules
 package-lock.json
 dist/
 elm-stuff/
+src/js/firebase/Config.js
