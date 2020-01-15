@@ -60,9 +60,11 @@ toRoute string =
 
 
 type Msg =
-  InputLoginUserIdText   String |
-  InputLoginPasswordText String |
-  SubmitLoginInfo String String |
+  InputLoginUserIdText   String  |
+  InputLoginPasswordText String  |
+  InputAddTodoTitle String       |
+  InputAddTodoDescription String |
+  SubmitLoginInfo String String  |
   Login LoginInfo |
   UrlChanged  Url.Url |
   LinkClicked Browser.UrlRequest
@@ -87,45 +89,66 @@ init flags url key =
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
-  case msg of
-    LinkClicked urlRequest ->
-      case urlRequest of
-        Browser.Internal url ->
-          (model,
-           Cmd.batch <| [Nav.pushUrl model.key (Url.toString url)]
-          )
-        Browser.External url ->
-          (model,
-           Nav.load url
-          )
+  let
+    { addTodoInfo } = model
+  in
+    case msg of
+      LinkClicked urlRequest ->
+        case urlRequest of
+          Browser.Internal url ->
+            (model,
+             Cmd.batch <| [Nav.pushUrl model.key (Url.toString url)]
+            )
+          Browser.External url ->
+            (model,
+             Nav.load url
+            )
 
-    UrlChanged url ->
-      ({model | url = url},
-       Cmd.none
-      )
-
-    InputLoginUserIdText userId ->
-      ({ model | loginUserId = userId}, Cmd.none)
-
-    InputLoginPasswordText password ->
-      ({ model | loginUserPassword = password }, Cmd.none)
-
-    SubmitLoginInfo userId password ->
-      (model, submitLoginInfo {
-        userId = userId,
-        password = password,
-        isLoggedIn = False
-      })
-
-    Login loginResult ->
-      if loginResult.isLoggedIn then
-        ( {model | isLoginFail = False},
-          Nav.pushUrl model.key "/top"
+      UrlChanged url ->
+        ({model | url = url},
+         Cmd.none
         )
-      else
-        ( {model | isLoginFail = True},
-          Cmd.none
-        )
+
+      InputLoginUserIdText userId ->
+        ({ model | loginUserId = userId}, Cmd.none)
+
+      InputLoginPasswordText password ->
+        ({ model | loginUserPassword = password }, Cmd.none)
+
+      InputAddTodoTitle title ->
+        ({
+          model |
+            addTodoInfo = {
+              addTodoInfo |
+              title = title
+            }
+        }, Cmd.none)
+
+      InputAddTodoDescription description ->
+        ({
+          model |
+            addTodoInfo = {
+              addTodoInfo |
+              description = description
+            }
+        }, Cmd.none)
+
+      SubmitLoginInfo userId password ->
+        (model, submitLoginInfo {
+          userId = userId,
+          password = password,
+          isLoggedIn = False
+        })
+
+      Login loginResult ->
+        if loginResult.isLoggedIn then
+          ( {model | isLoginFail = False},
+            Nav.pushUrl model.key "/top"
+          )
+        else
+          ( {model | isLoginFail = True},
+            Cmd.none
+          )
 
 
 view : Model -> Html Msg
@@ -205,11 +228,11 @@ viewAdd model =
     div [] [
       div [] [
         text "TODOタイトル : ",
-        input [ type_ "text" ] []
+        input [ type_ "text", onInput InputAddTodoTitle, value model.addTodoInfo.title ] []
       ],
       div [] [
         text "TODO説明 : ",
-        textarea [ rows 8, cols 80 ] []
+        textarea [ rows 8, cols 80, onInput InputAddTodoDescription, value model.addTodoInfo.description ] []
       ],
       div [] [
         text "画像登録 : ", -- TODO
