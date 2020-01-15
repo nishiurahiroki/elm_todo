@@ -8,6 +8,7 @@ import Html.Events exposing (..)
 import Url
 import Url.Parser exposing (Parser, (</>), int, map, oneOf, s, string, top)
 
+
 type alias Model =
   {
     key : Nav.Key,
@@ -86,7 +87,7 @@ update msg model =
           )
 
     UrlChanged url ->
-      (model,
+      ({model | url = url},
        Cmd.none
       )
 
@@ -103,10 +104,10 @@ update msg model =
         isLoggedIn = False
       })
 
-    Login loginResult -> -- TODO success or failure.
+    Login loginResult ->
       if loginResult.isLoggedIn then
         ( {model | isLoginFail = False},
-          Nav.load "/top"
+          Nav.pushUrl model.key "/top"
         )
       else
         ( {model | isLoginFail = True},

@@ -19,7 +19,6 @@ app.ports.submitLoginInfo.subscribe(({ userId, password }) => {
   })
 })
 
-
 firebase.auth().onAuthStateChanged(user => {
   if(user) {
     app.ports.getLoginResult.send({
