@@ -15,7 +15,8 @@ type alias Model =
     url : Url.Url,
     loginUserId : String,
     loginUserPassword : String,
-    isLoginFail : Bool
+    isLoginFail : Bool,
+    addTodoInfo : AddTodoInfo
   }
 
 type alias LoginInfo =
@@ -25,12 +26,19 @@ type alias LoginInfo =
     isLoggedIn : Bool
   }
 
+type alias AddTodoInfo =
+  {
+    title : String,
+    description : String
+  }
+
 port submitLoginInfo : LoginInfo -> Cmd msg
 port getLoginResult : (LoginInfo -> msg) -> Sub msg
 
 type Route =
   LoginPage |
   TopPage |
+  AddPage |
   NotFoundPage
 
 routeParser : Parser (Route -> a) a
@@ -38,6 +46,7 @@ routeParser =
   oneOf
     [ Url.Parser.map LoginPage   top
     , Url.Parser.map TopPage     (Url.Parser.s "top")
+    , Url.Parser.map AddPage     (Url.Parser.s "add")
     ]
 
 toRoute : String -> Route
@@ -66,7 +75,11 @@ init flags url key =
       loginUserPassword = "",
       url = url,
       key = key,
-      isLoginFail = False
+      isLoginFail = False,
+      addTodoInfo = {
+        title = "",
+        description = ""
+      }
     },
     Cmd.none
   )
@@ -122,10 +135,13 @@ view model =
       viewLogin model
 
     TopPage ->
-      viewTop model
+      addHeader <| viewTop model
+
+    AddPage ->
+      addHeader <| viewAdd model
 
     NotFoundPage ->
-      viewNotFound model
+      addHeader <| viewNotFound model
 
 viewLogin : Model -> Html Msg
 viewLogin model =
@@ -148,33 +164,67 @@ viewLogin model =
         errorMessageText
       ]
 
+addHeader : Html Msg -> Html Msg
+addHeader content =
+  div [] [
+    div [] [
+      p [] [
+        li [] [
+          a [ href "/top" ] [ text "トップ画面" ]
+        ],
+        li [] [
+          a [ href "/list" ] [ text "一覧画面" ]
+        ],
+        li [] [
+          a [ href "/add" ] [ text "追加画面" ]
+        ],
+        li [] [
+          a [ href "/logout" ] [ text "ログアウト" ]
+        ]
+      ]
+    ],
+    div [] [
+      content
+    ]
+  ]
+
 viewTop : Model -> Html Msg
 viewTop model =
   div [] [
-    p [] [
-      li [] [
-        a [ href "/top" ] [ text "トップ画面" ]
-      ],
-      li [] [
-        a [ href "/list" ] [ text "一覧画面" ]
-      ],
-      li [] [
-        a [ href "/add" ] [ text "追加画面" ]
-      ],
-      li [] [
-        a [ href "/logout" ] [ text "ログアウト" ]
-      ]
-    ]
+    text "トップ画面"
   ]
 
 viewNotFound : Model -> Html Msg
 viewNotFound model =
   div [] [ text "Not found page." ]
 
+viewAdd : Model -> Html Msg
+viewAdd model =
+  span [] [
+    div [] [ text "新規追加画面" ],
+    div [] [
+      div [] [
+        text "TODOタイトル : ",
+        input [ type_ "text" ] []
+      ],
+      div [] [
+        text "TODO説明 : ",
+        textarea [ rows 8, cols 80 ] []
+      ],
+      div [] [
+        text "画像登録 : ", -- TODO
+        input [ type_ "file" ] []
+      ],
+      div [] [
+        button [] [ text "登録" ]
+      ]
+    ]
+  ]
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
   Sub.batch [ getLoginResult Login ]
-
 
 main : Program () Model Msg
 main =
