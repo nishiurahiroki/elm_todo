@@ -33,7 +33,10 @@ type alias AddTodoInfo =
   }
 
 port submitLoginInfo : LoginInfo -> Cmd msg
+port addTodo : AddTodoInfo -> Cmd msg
+
 port getLoginResult : (LoginInfo -> msg) -> Sub msg
+port getAddTodoResult : (Bool -> msg) -> Sub msg
 
 type Route =
   LoginPage |
@@ -67,7 +70,9 @@ type Msg =
   SubmitLoginInfo String String  |
   Login LoginInfo |
   UrlChanged  Url.Url |
-  LinkClicked Browser.UrlRequest
+  LinkClicked Browser.UrlRequest |
+  AddTodo String String |
+  AddFinishedTodo Bool
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url key =
@@ -150,6 +155,16 @@ update msg model =
             Cmd.none
           )
 
+      AddTodo title description ->
+        (model, addTodo { title = title, description = description })
+
+      AddFinishedTodo isAddSuccess -> -- TODO 成功可否判定処理分け
+        ({
+          model | addTodoInfo = {
+            title = "",
+            description = ""
+          }
+        }, Cmd.none)
 
 view : Model -> Html Msg
 view model =
@@ -239,7 +254,7 @@ viewAdd model =
         input [ type_ "file" ] []
       ],
       div [] [
-        button [] [ text "登録" ]
+        button [ onClick <| AddTodo model.addTodoInfo.title model.addTodoInfo.description ] [ text "登録" ]
       ]
     ]
   ]
@@ -247,7 +262,10 @@ viewAdd model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  Sub.batch [ getLoginResult Login ]
+  Sub.batch [
+    getLoginResult Login,
+    getAddTodoResult AddFinishedTodo
+  ]
 
 main : Program () Model Msg
 main =
