@@ -10,7 +10,15 @@ firebase.initializeApp(firebaseConfig)
 const app = Elm.Main.init()
 
 app.ports.submitLoginInfo.subscribe(({ userId, password }) => {
-  firebase.auth().signInWithEmailAndPassword(userId, password).catch(function(error) {
+  firebase.auth().signInWithEmailAndPassword(userId, password)
+  .then(() => {
+    app.ports.getLoginResult.send({
+      userId,
+      password,
+      isLoggedIn : true
+    })
+  })
+  .catch(function(error) {
     app.ports.getLoginResult.send({
       userId : '',
       password : '',
@@ -21,10 +29,6 @@ app.ports.submitLoginInfo.subscribe(({ userId, password }) => {
 
 firebase.auth().onAuthStateChanged(user => {
   if(user) {
-    app.ports.getLoginResult.send({
-      userId : user.email,
-      password : '',
-      isLoggedIn : true
-    })
+    // TODO something.
   }
 })
