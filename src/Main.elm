@@ -16,7 +16,8 @@ type alias Model =
     loginUserId : String,
     loginUserPassword : String,
     isLoginFail : Bool,
-    addTodoInfo : AddTodoInfo
+    addTodoInfo : AddTodoInfo,
+    searchInfo : SearchInfo
   }
 
 type alias LoginInfo =
@@ -32,17 +33,34 @@ type alias AddTodoInfo =
     description : String
   }
 
+type alias SearchInfo =
+  {
+    title : String,
+    description : String,
+    todoList : List TodoListItem
+  }
+
+type alias TodoListItem =
+  {
+    id : String,
+    title : String,
+    description : String
+  }
+
 port submitLoginInfo : LoginInfo -> Cmd msg
 port addTodo : AddTodoInfo -> Cmd msg
 port showMessage : String -> Cmd msg
+port sendSearchRequest : SearchInfo -> Cmd msg
 
 port getLoginResult : (LoginInfo -> msg) -> Sub msg
 port getAddTodoResult : (Bool -> msg) -> Sub msg
+port showSearchResult : (List TodoListItem -> msg) -> Sub msg
 
 type Route =
   LoginPage |
-  TopPage |
-  AddPage |
+  TopPage   |
+  AddPage   |
+  ListPage  |
   NotFoundPage
 
 routeParser : Parser (Route -> a) a
@@ -51,6 +69,7 @@ routeParser =
     [ Url.Parser.map LoginPage   top
     , Url.Parser.map TopPage     (Url.Parser.s "top")
     , Url.Parser.map AddPage     (Url.Parser.s "add")
+    , Url.Parser.map ListPage    (Url.Parser.s "list")
     ]
 
 toRoute : Url.Url -> Maybe Route
@@ -68,7 +87,9 @@ type Msg =
   UrlChanged  Url.Url |
   LinkClicked Browser.UrlRequest |
   AddTodo String String |
-  AddFinishedTodo Bool
+  AddFinishedTodo Bool |
+  SendSearchRequest String String |
+  ShowSearchResult (List TodoListItem)
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url key =
@@ -82,6 +103,11 @@ init flags url key =
       addTodoInfo = {
         title = "",
         description = ""
+      },
+      searchInfo = {
+        title = "",
+        description = "",
+        todoList = []
       }
     },
     Cmd.none
@@ -91,7 +117,7 @@ init flags url key =
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   let
-    { addTodoInfo } = model
+    { addTodoInfo, searchInfo } = model
   in
     case msg of
       LinkClicked urlRequest ->
@@ -165,6 +191,18 @@ update msg model =
         else
           (model, showMessage "登録に失敗しました")
 
+      SendSearchRequest title description ->
+        (model , sendSearchRequest { searchInfo | title = title, description = description })
+
+      ShowSearchResult todoList ->
+        ({
+          model | searchInfo = {
+              searchInfo |
+                todoList = todoList
+          }
+        }, Cmd.none)
+
+
 view : Model -> Html Msg
 view model =
   case Url.Parser.parse routeParser model.url of
@@ -181,6 +219,9 @@ view model =
 
         AddPage ->
           addHeader <| viewAdd model
+
+        ListPage ->
+          addHeader <| viewList model
 
         NotFoundPage ->
           addHeader <| viewNotFound model
@@ -264,12 +305,55 @@ viewAdd model =
     ]
   ]
 
+viewList : Model -> Html Msg
+viewList model =
+  div [] [
+    div [] [ text "検索" ],
+    div [] [
+      text "タイトル : ",
+      input [ type_ "text" ] []
+    ],
+    div [] [
+      text "説明 内容 : ",
+      input [ type_ "text" ][]
+    ],
+    div [] [
+      button [ onClick <| SendSearchRequest model.searchInfo.title model.searchInfo.description ] [ text "検索" ]
+    ],
+    div [] [
+      table [] [
+        thead [] [
+          tr [] [
+            th [] [ text "TODO ID" ],
+            th [] [ text "TODO タイトル" ],
+            th [] [ text "TODO 説明" ],
+            th [] [ text "詳細" ],
+            th [] [ text "削除" ]
+          ]
+        ],
+        tbody []
+          <| List.map (\todo -> tr [] [
+            td [] [ text todo.id ],
+            td [] [ text todo.title ],
+            td [] [ text todo.description ],
+            td [] [
+              button [] [ text "詳細" ]
+            ],
+            td [] [
+              button [] [ text "削除" ]
+            ]
+          ])
+          <| model.searchInfo.todoList
+      ]
+    ]
+  ]
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
   Sub.batch [
     getLoginResult Login,
-    getAddTodoResult AddFinishedTodo
+    getAddTodoResult AddFinishedTodo,
+    showSearchResult ShowSearchResult
   ]
 
 main : Program () Model Msg

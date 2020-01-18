@@ -39,7 +39,24 @@ app.ports.addTodo.subscribe(({title, description}) => {
   .catch(() => app.ports.getAddTodoResult.send(false))
 })
 
+app.ports.sendSearchRequest.subscribe(({id, description}) => {
+  console.log(id) // TODO
+  console.log(description) // TODO
+  db.collection('todoList').get().then(snapShot => {
+    app.ports.showSearchResult.send(
+      snapShot.docs.map(todo =>
+        ({
+          id : todo.id,
+          title : todo.data().title,
+          description : todo.data().description
+        })
+      )
+    )
+  })
+})
+
 app.ports.showMessage.subscribe(message => alert(message))
+
 
 firebase.auth().onAuthStateChanged(user => {
   if(user) {
