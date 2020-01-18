@@ -52,14 +52,9 @@ routeParser =
     , Url.Parser.map AddPage     (Url.Parser.s "add")
     ]
 
-toRoute : String -> Route
-toRoute string =
-  case Url.fromString string of
-    Nothing ->
-      LoginPage
-
-    Just url ->
-      Maybe.withDefault NotFoundPage (Url.Parser.parse routeParser url)
+toRoute : Url.Url -> Maybe Route
+toRoute url =
+  Url.Parser.parse routeParser url
 
 
 type Msg =
@@ -168,18 +163,24 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-  case toRoute <| Url.toString model.url of
-    LoginPage ->
-      viewLogin model
+  case Url.Parser.parse routeParser model.url of
+    Nothing ->
+      viewNotFound model
 
-    TopPage ->
-      addHeader <| viewTop model
+    Just route ->
+      case route of
+        LoginPage ->
+          viewLogin model
 
-    AddPage ->
-      addHeader <| viewAdd model
+        TopPage ->
+          addHeader <| viewTop model
 
-    NotFoundPage ->
-      addHeader <| viewNotFound model
+        AddPage ->
+          addHeader <| viewAdd model
+
+        NotFoundPage ->
+          addHeader <| viewNotFound model
+
 
 viewLogin : Model -> Html Msg
 viewLogin model =
