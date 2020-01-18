@@ -34,6 +34,7 @@ type alias AddTodoInfo =
 
 port submitLoginInfo : LoginInfo -> Cmd msg
 port addTodo : AddTodoInfo -> Cmd msg
+port showMessage : String -> Cmd msg
 
 port getLoginResult : (LoginInfo -> msg) -> Sub msg
 port getAddTodoResult : (Bool -> msg) -> Sub msg
@@ -143,7 +144,7 @@ update msg model =
       Login loginResult ->
         if loginResult.isLoggedIn then
           ( {model | isLoginFail = False},
-            Nav.pushUrl model.key "/top"
+            Nav.pushUrl model.key "top"
           )
         else
           ( {model | isLoginFail = True},
@@ -153,13 +154,16 @@ update msg model =
       AddTodo title description ->
         (model, addTodo { title = title, description = description })
 
-      AddFinishedTodo isAddSuccess -> -- TODO 成功可否判定処理分け
-        ({
-          model | addTodoInfo = {
-            title = "",
-            description = ""
-          }
-        }, Cmd.none)
+      AddFinishedTodo isAddSuccess ->
+        if isAddSuccess then
+          ({
+            model | addTodoInfo = {
+              title = "",
+              description = ""
+            }
+          }, showMessage "登録に成功しました" )
+        else
+          (model, showMessage "登録に失敗しました")
 
 view : Model -> Html Msg
 view model =

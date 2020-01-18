@@ -39,6 +39,8 @@ app.ports.addTodo.subscribe(({title, description}) => {
   .catch(() => app.ports.getAddTodoResult.send(false))
 })
 
+app.ports.showMessage.subscribe(message => alert(message))
+
 firebase.auth().onAuthStateChanged(user => {
   if(user) {
     // TODO something.
