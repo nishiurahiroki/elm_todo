@@ -6,7 +6,8 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Url
-import Url.Parser exposing (Parser, (</>), int, map, oneOf, s, string, top)
+import Url.Parser exposing (Parser, (</>),(<?>),  int, map, oneOf, s, string, top)
+import Url.Parser.Query as Query
 
 
 type alias Model =
@@ -17,7 +18,8 @@ type alias Model =
     loginUserPassword : String,
     isLoginFail : Bool,
     addTodoInfo : AddTodoInfo,
-    searchInfo : SearchInfo
+    searchInfo : SearchInfo,
+    detailInfo : DetailInfo
   }
 
 type alias LoginInfo =
@@ -40,6 +42,13 @@ type alias SearchInfo =
     todoList : List TodoListItem
   }
 
+type alias DetailInfo =
+  {
+    id : String,
+    title : String,
+    description : String
+  }
+
 type alias TodoListItem =
   {
     id : String,
@@ -52,17 +61,20 @@ port addTodo : AddTodoInfo -> Cmd msg
 port showMessage : String -> Cmd msg
 port sendSearchRequest : SearchInfo -> Cmd msg
 port sendDeleteRequest : String -> Cmd msg
+port sendGetDetailRequest : String -> Cmd msg
 
 port getLoginResult : (LoginInfo -> msg) -> Sub msg
 port getAddTodoResult : (Bool -> msg) -> Sub msg
 port getDeleteTodoResult : (Bool -> msg) -> Sub msg
 port getSearchResult : (List TodoListItem -> msg) -> Sub msg
+port getDetailInfo : (DetailInfo -> msg) -> Sub msg
 
 type Route =
-  LoginPage |
-  TopPage   |
-  AddPage   |
-  ListPage  |
+  LoginPage  |
+  TopPage    |
+  AddPage    |
+  ListPage   |
+  DetailPage (Maybe String) |
   NotFoundPage
 
 routeParser : Parser (Route -> a) a
@@ -72,6 +84,7 @@ routeParser =
     , Url.Parser.map TopPage     (Url.Parser.s "top")
     , Url.Parser.map AddPage     (Url.Parser.s "add")
     , Url.Parser.map ListPage    (Url.Parser.s "list")
+    , Url.Parser.map DetailPage  (Url.Parser.s "detail" <?> Query.string "id")
     ]
 
 
@@ -89,7 +102,8 @@ type Msg =
   AddFinishedTodo Bool |
   SearchTodo String String |
   ShowSearchResult (List TodoListItem) |
-  ShowDeleteResultMessage Bool
+  ShowDeleteResultMessage Bool |
+  ShowTodoDetail DetailInfo
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url key =
@@ -108,6 +122,11 @@ init flags url key =
         title = "",
         description = "",
         todoList = []
+      },
+      detailInfo = {
+        id = "",
+        description = "",
+        title = ""
       }
     },
     Cmd.none
@@ -125,16 +144,20 @@ update msg model =
           Browser.Internal url ->
             let
               currentPage = Url.Parser.parse routeParser url |> Maybe.withDefault NotFoundPage
-              listPageInitilalCmd = if currentPage == ListPage then
-                                     sendSearchRequest searchInfo
-                                    else
-                                     Cmd.none
+              initialCommandList = case currentPage of
+                ListPage ->
+                  [sendSearchRequest searchInfo]
+                DetailPage id ->
+                  [sendGetDetailRequest <| Maybe.withDefault "" id]
+                _ ->
+                  [Cmd.none]
             in
               (model,
-               Cmd.batch [
-                Nav.pushUrl model.key (Url.toString url),
-                listPageInitilalCmd
-               ]
+               Cmd.batch
+                <| List.append [
+                    Nav.pushUrl model.key (Url.toString url)
+                   ]
+                <| initialCommandList
               )
           Browser.External url ->
             (model,
@@ -225,6 +248,16 @@ update msg model =
                   ]
           )
 
+      ShowTodoDetail detailInfo ->
+        ({
+          model |
+            detailInfo = {
+              id = detailInfo.id,
+              title = detailInfo.title,
+              description = detailInfo.description
+            }
+        }, Cmd.none)
+
 
 view : Model -> Html Msg
 view model =
@@ -245,6 +278,9 @@ view model =
 
         ListPage ->
           addHeader <| viewList model
+
+        DetailPage id ->
+          addHeader <| viewDetail model
 
         NotFoundPage ->
           addHeader <| viewNotFound model
@@ -338,7 +374,7 @@ viewList model =
     ],
     div [] [
       text "説明 内容 : ",
-      input [ type_ "text" ][]
+      input [ type_ "text" ] []
     ],
     div [] [
       button [ onClick <| SearchTodo model.searchInfo.title model.searchInfo.description ] [ text "検索" ]
@@ -360,7 +396,9 @@ viewList model =
             td [] [ text todo.title ],
             td [] [ text todo.description ],
             td [] [
-              button [] [ text "詳細" ]
+              a [ href <| "/detail?" ++ "id=" ++ todo.id ] [
+                button [] [ text "詳細" ]
+              ]
             ],
             td [] [
               button [ onClick <| DeleteTodo todo.id ] [ text "削除" ]
@@ -371,13 +409,37 @@ viewList model =
     ]
   ]
 
+viewDetail : Model -> Html Msg
+viewDetail model =
+  div [] [
+    div [] [
+      div [] [ text "詳細画面" ]
+    ],
+    div [] [
+      div [] [
+        text <| "TODO ID : " ++ model.detailInfo.id
+      ],
+      div [] [
+        text <| "TODO タイトル : " ++ model.detailInfo.title
+      ],
+      div [] [
+        text <| "TODO 説明" ++ model.detailInfo.description
+      ]
+    ],
+    div [] [
+      button [] [ text "更新" ]
+    ]
+  ]
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
   Sub.batch [
     getLoginResult Login,
     getAddTodoResult AddFinishedTodo,
     getSearchResult ShowSearchResult,
-    getDeleteTodoResult ShowDeleteResultMessage
+    getDeleteTodoResult ShowDeleteResultMessage,
+    getDetailInfo ShowTodoDetail
   ]
 
 main : Program () Model Msg

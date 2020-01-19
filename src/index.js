@@ -61,6 +61,30 @@ app.ports.sendDeleteRequest.subscribe(id => {
     .catch(() => app.ports.getDeleteTodoResult.send(false))
 })
 
+app.ports.sendGetDetailRequest.subscribe(id => {
+  db.collection('todoList').doc(id).get()
+    .then(todo => {
+      if(todo.exists) {
+        app.ports.getDetailInfo.send({
+          id,
+          title : todo.data().title,
+          description : todo.data().description
+        })
+      } else {
+        app.ports.getDetailInfo.send({
+          id : '',
+          title : '',
+          description : ''
+        })
+      }
+    })
+    .catch(error => app.ports.getDetailInfo.send({
+      id : '',
+      title : '',
+      description : ''
+    }))
+})
+
 app.ports.showMessage.subscribe(message => alert(message))
 
 
