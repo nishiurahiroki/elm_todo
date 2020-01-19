@@ -123,9 +123,19 @@ update msg model =
       LinkClicked urlRequest ->
         case urlRequest of
           Browser.Internal url ->
-            (model,
-             Cmd.batch [Nav.pushUrl model.key (Url.toString url)]
-            )
+            let
+              currentPage = Url.Parser.parse routeParser url |> Maybe.withDefault NotFoundPage
+              listPageInitilalCmd = if currentPage == ListPage then
+                                     sendSearchRequest searchInfo
+                                    else
+                                     Cmd.none
+            in
+              (model,
+               Cmd.batch [
+                Nav.pushUrl model.key (Url.toString url),
+                listPageInitilalCmd
+               ]
+              )
           Browser.External url ->
             (model,
              Nav.load url
