@@ -74,10 +74,6 @@ routeParser =
     , Url.Parser.map ListPage    (Url.Parser.s "list")
     ]
 
-toRoute : Url.Url -> Maybe Route
-toRoute url =
-  Url.Parser.parse routeParser url
-
 
 type Msg =
   InputLoginUserIdText   String  |
@@ -128,7 +124,7 @@ update msg model =
         case urlRequest of
           Browser.Internal url ->
             (model,
-             Cmd.batch <| [Nav.pushUrl model.key (Url.toString url)]
+             Cmd.batch [Nav.pushUrl model.key (Url.toString url)]
             )
           Browser.External url ->
             (model,
