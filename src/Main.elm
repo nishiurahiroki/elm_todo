@@ -51,10 +51,12 @@ port submitLoginInfo : LoginInfo -> Cmd msg
 port addTodo : AddTodoInfo -> Cmd msg
 port showMessage : String -> Cmd msg
 port sendSearchRequest : SearchInfo -> Cmd msg
+port sendDeleteRequest : String -> Cmd msg
 
 port getLoginResult : (LoginInfo -> msg) -> Sub msg
 port getAddTodoResult : (Bool -> msg) -> Sub msg
-port showSearchResult : (List TodoListItem -> msg) -> Sub msg
+port getDeleteTodoResult : (Bool -> msg) -> Sub msg
+port getSearchResult : (List TodoListItem -> msg) -> Sub msg
 
 type Route =
   LoginPage |
@@ -87,9 +89,11 @@ type Msg =
   UrlChanged  Url.Url |
   LinkClicked Browser.UrlRequest |
   AddTodo String String |
+  DeleteTodo String |
   AddFinishedTodo Bool |
-  SendSearchRequest String String |
-  ShowSearchResult (List TodoListItem)
+  SearchTodo String String |
+  ShowSearchResult (List TodoListItem) |
+  ShowDeleteResultMessage Bool
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url key =
@@ -180,6 +184,9 @@ update msg model =
       AddTodo title description ->
         (model, addTodo { title = title, description = description })
 
+      DeleteTodo id ->
+        (model, sendDeleteRequest id)
+
       AddFinishedTodo isAddSuccess ->
         if isAddSuccess then
           ({
@@ -191,7 +198,7 @@ update msg model =
         else
           (model, showMessage "登録に失敗しました")
 
-      SendSearchRequest title description ->
+      SearchTodo title description ->
         (model , sendSearchRequest { searchInfo | title = title, description = description })
 
       ShowSearchResult todoList ->
@@ -201,6 +208,16 @@ update msg model =
                 todoList = todoList
           }
         }, Cmd.none)
+
+      ShowDeleteResultMessage isSuccess ->
+        let
+          message = if isSuccess then "削除しました" else "削除に失敗しました"
+        in
+          (model, Cmd.batch [
+                    showMessage message,
+                    sendSearchRequest { searchInfo | title = model.searchInfo.title, description = model.searchInfo.description }
+                  ]
+          )
 
 
 view : Model -> Html Msg
@@ -318,7 +335,7 @@ viewList model =
       input [ type_ "text" ][]
     ],
     div [] [
-      button [ onClick <| SendSearchRequest model.searchInfo.title model.searchInfo.description ] [ text "検索" ]
+      button [ onClick <| SearchTodo model.searchInfo.title model.searchInfo.description ] [ text "検索" ]
     ],
     div [] [
       table [] [
@@ -340,7 +357,7 @@ viewList model =
               button [] [ text "詳細" ]
             ],
             td [] [
-              button [] [ text "削除" ]
+              button [ onClick <| DeleteTodo todo.id ] [ text "削除" ]
             ]
           ])
           <| model.searchInfo.todoList
@@ -353,7 +370,8 @@ subscriptions model =
   Sub.batch [
     getLoginResult Login,
     getAddTodoResult AddFinishedTodo,
-    showSearchResult ShowSearchResult
+    getSearchResult ShowSearchResult,
+    getDeleteTodoResult ShowDeleteResultMessage
   ]
 
 main : Program () Model Msg

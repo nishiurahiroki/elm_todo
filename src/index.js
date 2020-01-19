@@ -43,7 +43,7 @@ app.ports.sendSearchRequest.subscribe(({id, description}) => {
   console.log(id) // TODO
   console.log(description) // TODO
   db.collection('todoList').get().then(snapShot => {
-    app.ports.showSearchResult.send(
+    app.ports.getSearchResult.send(
       snapShot.docs.map(todo =>
         ({
           id : todo.id,
@@ -53,6 +53,12 @@ app.ports.sendSearchRequest.subscribe(({id, description}) => {
       )
     )
   })
+})
+
+app.ports.sendDeleteRequest.subscribe(id => {
+  db.collection('todoList').doc(id).delete()
+    .then(() => app.ports.getDeleteTodoResult.send(true))
+    .catch(() => app.ports.getDeleteTodoResult.send(false))
 })
 
 app.ports.showMessage.subscribe(message => alert(message))
