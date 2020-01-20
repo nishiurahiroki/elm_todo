@@ -338,15 +338,15 @@ addHeader content =
     ]
   ]
 
+viewNotFound : Model -> Html Msg
+viewNotFound model =
+  div [] [ text "Not found page." ]
+
 viewTop : Model -> Html Msg
 viewTop model =
   div [] [
     text "トップ画面"
   ]
-
-viewNotFound : Model -> Html Msg
-viewNotFound model =
-  div [] [ text "Not found page." ]
 
 viewAdd : Model -> Html Msg
 viewAdd model =
