@@ -427,7 +427,7 @@ viewDetail model =
       ]
     ],
     div [] [
-      button [] [ text "更新" ]
+      button [] [ text "編集" ]
     ]
   ]
 
