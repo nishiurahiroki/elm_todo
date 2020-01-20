@@ -14,35 +14,33 @@ type alias Model =
   {
     key : Nav.Key,
     url : Url.Url,
-    loginUserId : String,
-    loginUserPassword : String,
-    isLoginFail : Bool,
-    addTodoInfo : AddTodoInfo,
-    searchInfo : SearchInfo,
-    detailInfo : DetailInfo
+    addTodoModel : AddTodoModel,
+    searchModel : SearchModel,
+    detailModel : DetailModel,
+    loginModel : LoginModel
   }
 
-type alias LoginInfo =
+type alias LoginModel =
   {
     userId : String,
     password : String,
-    isLoggedIn : Bool
+    isLoginSuccess : Bool
   }
 
-type alias AddTodoInfo =
+type alias AddTodoModel =
   {
     title : String,
     description : String
   }
 
-type alias SearchInfo =
+type alias SearchModel =
   {
     title : String,
     description : String,
     todoList : List TodoListItem
   }
 
-type alias DetailInfo =
+type alias DetailModel =
   {
     id : String,
     title : String,
@@ -56,18 +54,18 @@ type alias TodoListItem =
     description : String
   }
 
-port submitLoginInfo : LoginInfo -> Cmd msg
-port addTodo : AddTodoInfo -> Cmd msg
+port sendLoginRequest : LoginModel -> Cmd msg
+port addTodo : AddTodoModel -> Cmd msg
 port showMessage : String -> Cmd msg
-port sendSearchRequest : SearchInfo -> Cmd msg
+port sendSearchRequest : SearchModel -> Cmd msg
 port sendDeleteRequest : String -> Cmd msg
 port sendGetDetailRequest : String -> Cmd msg
 
-port getLoginResult : (LoginInfo -> msg) -> Sub msg
+port getLoginResult : (LoginModel -> msg) -> Sub msg
 port getAddTodoResult : (Bool -> msg) -> Sub msg
 port getDeleteTodoResult : (Bool -> msg) -> Sub msg
 port getSearchResult : (List TodoListItem -> msg) -> Sub msg
-port getDetailInfo : (DetailInfo -> msg) -> Sub msg
+port getDetailModel : (DetailModel -> msg) -> Sub msg
 
 type Route =
   LoginPage  |
@@ -93,8 +91,8 @@ type Msg =
   InputLoginPasswordText String  |
   InputAddTodoTitle String       |
   InputAddTodoDescription String |
-  SubmitLoginInfo String String  |
-  Login LoginInfo |
+  SendLoginRequest String String  |
+  Login LoginModel |
   UrlChanged  Url.Url |
   LinkClicked Browser.UrlRequest |
   AddTodo String String |
@@ -103,27 +101,29 @@ type Msg =
   SearchTodo String String |
   ShowSearchResult (List TodoListItem) |
   ShowDeleteResultMessage Bool |
-  ShowTodoDetail DetailInfo
+  ShowTodoDetail DetailModel
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url key =
   (
     {
-      loginUserId = "",
-      loginUserPassword = "",
       url = url,
       key = key,
-      isLoginFail = False,
-      addTodoInfo = {
+      loginModel = {
+        userId = "",
+        password = "",
+        isLoginSuccess = True
+      },
+      addTodoModel = {
         title = "",
         description = ""
       },
-      searchInfo = {
+      searchModel = {
         title = "",
         description = "",
         todoList = []
       },
-      detailInfo = {
+      detailModel = {
         id = "",
         description = "",
         title = ""
@@ -136,7 +136,7 @@ init flags url key =
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   let
-    { addTodoInfo, searchInfo } = model
+    { addTodoModel, searchModel, loginModel } = model
   in
     case msg of
       LinkClicked urlRequest ->
@@ -146,7 +146,7 @@ update msg model =
               currentPage = Url.Parser.parse routeParser url |> Maybe.withDefault NotFoundPage
               initialCommandList = case currentPage of
                 ListPage ->
-                  [sendSearchRequest searchInfo]
+                  [sendSearchRequest searchModel]
                 DetailPage id ->
                   [sendGetDetailRequest <| Maybe.withDefault "" id]
                 _ ->
@@ -170,16 +170,22 @@ update msg model =
         )
 
       InputLoginUserIdText userId ->
-        ({ model | loginUserId = userId}, Cmd.none)
+        ({ model | loginModel = {
+          loginModel |
+            userId = userId
+        }}, Cmd.none)
 
       InputLoginPasswordText password ->
-        ({ model | loginUserPassword = password }, Cmd.none)
+        ({ model | loginModel = {
+          loginModel |
+            password = password
+        }}, Cmd.none)
 
       InputAddTodoTitle title ->
         ({
           model |
-            addTodoInfo = {
-              addTodoInfo |
+            addTodoModel = {
+              addTodoModel |
               title = title
             }
         }, Cmd.none)
@@ -187,26 +193,26 @@ update msg model =
       InputAddTodoDescription description ->
         ({
           model |
-            addTodoInfo = {
-              addTodoInfo |
+            addTodoModel = {
+              addTodoModel |
               description = description
             }
         }, Cmd.none)
 
-      SubmitLoginInfo userId password ->
-        (model, submitLoginInfo {
+      SendLoginRequest userId password ->
+        (model, sendLoginRequest {
           userId = userId,
           password = password,
-          isLoggedIn = False
+          isLoginSuccess = False
         })
 
       Login loginResult ->
-        if loginResult.isLoggedIn then
-          ( {model | isLoginFail = False},
+        if loginResult.isLoginSuccess then
+          ( {model | loginModel = loginResult},
             Nav.pushUrl model.key "top"
           )
         else
-          ( {model | isLoginFail = True},
+          ( {model | loginModel = loginResult},
             Cmd.none
           )
 
@@ -219,7 +225,7 @@ update msg model =
       AddFinishedTodo isAddSuccess ->
         if isAddSuccess then
           ({
-            model | addTodoInfo = {
+            model | addTodoModel = {
               title = "",
               description = ""
             }
@@ -228,12 +234,12 @@ update msg model =
           (model, showMessage "登録に失敗しました")
 
       SearchTodo title description ->
-        (model , sendSearchRequest { searchInfo | title = title, description = description })
+        (model , sendSearchRequest { searchModel | title = title, description = description })
 
       ShowSearchResult todoList ->
         ({
-          model | searchInfo = {
-              searchInfo |
+          model | searchModel = {
+              searchModel |
                 todoList = todoList
           }
         }, Cmd.none)
@@ -244,17 +250,17 @@ update msg model =
         in
           (model, Cmd.batch [
                     showMessage message,
-                    sendSearchRequest { searchInfo | title = model.searchInfo.title, description = model.searchInfo.description }
+                    sendSearchRequest { searchModel | title = model.searchModel.title, description = model.searchModel.description }
                   ]
           )
 
-      ShowTodoDetail detailInfo ->
+      ShowTodoDetail detailModel ->
         ({
           model |
-            detailInfo = {
-              id = detailInfo.id,
-              title = detailInfo.title,
-              description = detailInfo.description
+            detailModel = {
+              id = detailModel.id,
+              title = detailModel.title,
+              description = detailModel.description
             }
         }, Cmd.none)
 
@@ -289,20 +295,21 @@ view model =
 viewLogin : Model -> Html Msg
 viewLogin model =
   let
-    errorMessageText = if model.isLoginFail then div [] [ text "ログインに失敗しました" ] else text ""
+    _ = Debug.log "test" model.loginModel.isLoginSuccess
+    errorMessageText = if model.loginModel.isLoginSuccess then text "" else div [] [ text "ログインに失敗しました" ]
   in
     div []
       [
         div [] [
           text "ユーザーID : ",
-          input [ type_ "text", value model.loginUserId, onInput InputLoginUserIdText ] []
+          input [ type_ "text", value model.loginModel.userId, onInput InputLoginUserIdText ] []
         ],
         div [] [
           text "パスワード : ",
-          input [ type_ "password", value model.loginUserPassword, onInput InputLoginPasswordText ] []
+          input [ type_ "password", value model.loginModel.password, onInput InputLoginPasswordText ] []
         ],
         div [] [
-          button [ onClick <| SubmitLoginInfo model.loginUserId model.loginUserPassword ] [ text "ログイン" ]
+          button [ onClick <| SendLoginRequest model.loginModel.userId model.loginModel.password ] [ text "ログイン" ]
         ],
         errorMessageText
       ]
@@ -348,18 +355,18 @@ viewAdd model =
     div [] [
       div [] [
         text "TODOタイトル : ",
-        input [ type_ "text", onInput InputAddTodoTitle, value model.addTodoInfo.title ] []
+        input [ type_ "text", onInput InputAddTodoTitle, value model.addTodoModel.title ] []
       ],
       div [] [
         text "TODO説明 : ",
-        textarea [ rows 8, cols 80, onInput InputAddTodoDescription, value model.addTodoInfo.description ] []
+        textarea [ rows 8, cols 80, onInput InputAddTodoDescription, value model.addTodoModel.description ] []
       ],
       div [] [
         text "画像登録 : ", -- TODO
         input [ type_ "file" ] []
       ],
       div [] [
-        button [ onClick <| AddTodo model.addTodoInfo.title model.addTodoInfo.description ] [ text "登録" ]
+        button [ onClick <| AddTodo model.addTodoModel.title model.addTodoModel.description ] [ text "登録" ]
       ]
     ]
   ]
@@ -377,7 +384,7 @@ viewList model =
       input [ type_ "text" ] []
     ],
     div [] [
-      button [ onClick <| SearchTodo model.searchInfo.title model.searchInfo.description ] [ text "検索" ]
+      button [ onClick <| SearchTodo model.searchModel.title model.searchModel.description ] [ text "検索" ]
     ],
     div [] [
       table [] [
@@ -404,7 +411,7 @@ viewList model =
               button [ onClick <| DeleteTodo todo.id ] [ text "削除" ]
             ]
           ])
-          <| model.searchInfo.todoList
+          <| model.searchModel.todoList
       ]
     ]
   ]
@@ -417,13 +424,13 @@ viewDetail model =
     ],
     div [] [
       div [] [
-        text <| "TODO ID : " ++ model.detailInfo.id
+        text <| "TODO ID : " ++ model.detailModel.id
       ],
       div [] [
-        text <| "TODO タイトル : " ++ model.detailInfo.title
+        text <| "TODO タイトル : " ++ model.detailModel.title
       ],
       div [] [
-        text <| "TODO 説明" ++ model.detailInfo.description
+        text <| "TODO 説明" ++ model.detailModel.description
       ]
     ],
     div [] [
@@ -439,7 +446,7 @@ subscriptions model =
     getAddTodoResult AddFinishedTodo,
     getSearchResult ShowSearchResult,
     getDeleteTodoResult ShowDeleteResultMessage,
-    getDetailInfo ShowTodoDetail
+    getDetailModel ShowTodoDetail
   ]
 
 main : Program () Model Msg

@@ -12,20 +12,20 @@ const db = firebase.firestore()
 
 const app = Elm.Main.init()
 
-app.ports.submitLoginInfo.subscribe(({ userId, password }) => {
+app.ports.sendLoginRequest.subscribe(({ userId, password }) => {
   firebase.auth().signInWithEmailAndPassword(userId, password)
   .then(() => {
     app.ports.getLoginResult.send({
       userId,
       password,
-      isLoggedIn : true
+      isLoginSuccess : true
     })
   })
   .catch(function(error) {
     app.ports.getLoginResult.send({
       userId : '',
       password : '',
-      isLoggedIn : false
+      isLoginSuccess : false
     })
   })
 })
@@ -65,13 +65,13 @@ app.ports.sendGetDetailRequest.subscribe(id => {
   db.collection('todoList').doc(id).get()
     .then(todo => {
       if(todo.exists) {
-        app.ports.getDetailInfo.send({
+        app.ports.getDetailModel.send({
           id,
           title : todo.data().title,
           description : todo.data().description
         })
       } else {
-        app.ports.getDetailInfo.send({
+        app.ports.getDetailModel.send({
           id : '',
           title : '',
           description : ''
