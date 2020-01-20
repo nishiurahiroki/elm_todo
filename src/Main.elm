@@ -17,7 +17,8 @@ type alias Model =
     addTodoModel : AddTodoModel,
     searchModel : SearchModel,
     detailModel : DetailModel,
-    loginModel : LoginModel
+    loginModel : LoginModel,
+    editModel : EditModel
   }
 
 type alias LoginModel =
@@ -47,6 +48,13 @@ type alias DetailModel =
     description : String
   }
 
+type alias EditModel =
+  {
+    id : String,
+    title : String,
+    description : String
+  }
+
 type alias TodoListItem =
   {
     id : String,
@@ -60,12 +68,16 @@ port showMessage : String -> Cmd msg
 port sendSearchRequest : SearchModel -> Cmd msg
 port sendDeleteRequest : String -> Cmd msg
 port sendGetDetailRequest : String -> Cmd msg
+port sendGetEditRequest : String -> Cmd msg
+port sendUpdateRequest : EditModel -> Cmd msg
 
 port getLoginResult : (LoginModel -> msg) -> Sub msg
 port getAddTodoResult : (Bool -> msg) -> Sub msg
 port getDeleteTodoResult : (Bool -> msg) -> Sub msg
 port getSearchResult : (List TodoListItem -> msg) -> Sub msg
 port getDetailModel : (DetailModel -> msg) -> Sub msg
+port getEditModel : (EditModel -> msg) -> Sub msg
+port getUpdateResult : (Bool -> msg) -> Sub msg
 
 type Route =
   LoginPage  |
@@ -73,6 +85,7 @@ type Route =
   AddPage    |
   ListPage   |
   DetailPage (Maybe String) |
+  EditPage (Maybe String) |
   NotFoundPage
 
 routeParser : Parser (Route -> a) a
@@ -83,6 +96,7 @@ routeParser =
     , Url.Parser.map AddPage     (Url.Parser.s "add")
     , Url.Parser.map ListPage    (Url.Parser.s "list")
     , Url.Parser.map DetailPage  (Url.Parser.s "detail" <?> Query.string "id")
+    , Url.Parser.map EditPage    (Url.Parser.s "edit" <?> Query.string "id")
     ]
 
 
@@ -91,7 +105,9 @@ type Msg =
   InputLoginPasswordText String  |
   InputAddTodoTitle String       |
   InputAddTodoDescription String |
-  SendLoginRequest String String  |
+  InputUpdateTodoTitle String    |
+  InputUpdateTodoDescription String |
+  SendLoginRequest String String |
   Login LoginModel |
   UrlChanged  Url.Url |
   LinkClicked Browser.UrlRequest |
@@ -101,7 +117,10 @@ type Msg =
   SearchTodo String String |
   ShowSearchResult (List TodoListItem) |
   ShowDeleteResultMessage Bool |
-  ShowTodoDetail DetailModel
+  ShowTodoDetail DetailModel |
+  ShowTodoEdit EditModel |
+  UpdateTodo |
+  ShowUpdateResult Bool
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url key =
@@ -127,6 +146,11 @@ init flags url key =
         id = "",
         description = "",
         title = ""
+      },
+      editModel = {
+        id = "",
+        description = "",
+        title = ""
       }
     },
     Cmd.none
@@ -136,7 +160,7 @@ init flags url key =
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   let
-    { addTodoModel, searchModel, loginModel } = model
+    { addTodoModel, searchModel, loginModel, editModel, detailModel } = model
   in
     case msg of
       LinkClicked urlRequest ->
@@ -149,6 +173,8 @@ update msg model =
                   [sendSearchRequest searchModel]
                 DetailPage id ->
                   [sendGetDetailRequest <| Maybe.withDefault "" id]
+                EditPage id ->
+                  [sendGetEditRequest <| Maybe.withDefault "" id]
                 _ ->
                   [Cmd.none]
             in
@@ -199,6 +225,16 @@ update msg model =
             }
         }, Cmd.none)
 
+      InputUpdateTodoTitle title ->
+        ({ model | editModel = {
+          editModel | title = title
+        }}, Cmd.none)
+
+      InputUpdateTodoDescription description ->
+        ({model | editModel = {
+          editModel | description = description
+        }}, Cmd.none)
+
       SendLoginRequest userId password ->
         (model, sendLoginRequest {
           userId = userId,
@@ -222,6 +258,9 @@ update msg model =
       DeleteTodo id ->
         (model, sendDeleteRequest id)
 
+      UpdateTodo ->
+        (model, sendUpdateRequest editModel)
+
       AddFinishedTodo isAddSuccess ->
         if isAddSuccess then
           ({
@@ -229,7 +268,11 @@ update msg model =
               title = "",
               description = ""
             }
-          }, showMessage "登録に成功しました" )
+          }, Cmd.batch [
+            showMessage "登録に成功しました",
+            Nav.pushUrl model.key "list",
+            sendSearchRequest { todoList = [], title = "", description = "" }
+          ] )
         else
           (model, showMessage "登録に失敗しました")
 
@@ -254,15 +297,21 @@ update msg model =
                   ]
           )
 
-      ShowTodoDetail detailModel ->
-        ({
-          model |
-            detailModel = {
-              id = detailModel.id,
-              title = detailModel.title,
-              description = detailModel.description
-            }
-        }, Cmd.none)
+      ShowTodoDetail result ->
+        ({model | detailModel = result}, Cmd.none)
+
+      ShowTodoEdit result ->
+        ({model | editModel = result}, Cmd.none)
+
+      ShowUpdateResult isSuccess ->
+        if isSuccess then
+          (model, Cmd.batch [
+            showMessage "更新に成功しました",
+            sendSearchRequest { todoList = [], title = "", description = "" },
+            Nav.pushUrl model.key "list"
+          ])
+        else
+          (model, showMessage "更新に失敗しました")
 
 
 view : Model -> Html Msg
@@ -287,6 +336,9 @@ view model =
 
         DetailPage id ->
           addHeader <| viewDetail model
+
+        EditPage id ->
+          addHeader <| viewEdit model
 
         NotFoundPage ->
           addHeader <| viewNotFound model
@@ -434,10 +486,33 @@ viewDetail model =
       ]
     ],
     div [] [
-      button [] [ text "編集" ]
+      a [ href <| "edit?id=" ++ model.detailModel.id ] [
+        button [] [ text "編集" ]
+      ]
     ]
   ]
 
+viewEdit : Model -> Html Msg
+viewEdit model =
+  div [] [
+    div [] [ text "詳細画面" ],
+    div [] [
+      div [] [
+        text <| "TODO ID : " ++ model.editModel.id
+      ],
+      div [] [
+        text "TODO タイトル : ",
+        input [ type_ "text", value model.editModel.title, onInput InputUpdateTodoTitle ] []
+      ],
+      div [] [
+        text "TODO 説明 : ",
+        textarea [ onInput InputUpdateTodoDescription ] [ text model.editModel.description ]
+      ],
+      div [] [
+        button [ onClick UpdateTodo ] [ text "更新" ]
+      ]
+    ]
+  ]
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
@@ -446,7 +521,9 @@ subscriptions model =
     getAddTodoResult AddFinishedTodo,
     getSearchResult ShowSearchResult,
     getDeleteTodoResult ShowDeleteResultMessage,
-    getDetailModel ShowTodoDetail
+    getDetailModel ShowTodoDetail,
+    getEditModel ShowTodoEdit,
+    getUpdateResult ShowUpdateResult
   ]
 
 main : Program () Model Msg

@@ -61,32 +61,54 @@ app.ports.sendDeleteRequest.subscribe(id => {
     .catch(() => app.ports.getDeleteTodoResult.send(false))
 })
 
-app.ports.sendGetDetailRequest.subscribe(id => {
-  db.collection('todoList').doc(id).get()
-    .then(todo => {
-      if(todo.exists) {
-        app.ports.getDetailModel.send({
-          id,
-          title : todo.data().title,
-          description : todo.data().description
-        })
-      } else {
-        app.ports.getDetailModel.send({
-          id : '',
-          title : '',
-          description : ''
-        })
-      }
-    })
-    .catch(error => app.ports.getDetailInfo.send({
-      id : '',
-      title : '',
-      description : ''
-    }))
+const GET_TODO_PORTS = [
+  {
+    cmd : app.ports.sendGetDetailRequest,
+    sub : app.ports.getDetailModel
+  },
+  {
+    cmd : app.ports.sendGetEditRequest,
+    sub : app.ports.getEditModel
+  }
+]
+
+GET_TODO_PORTS.forEach(({sub, cmd}) => {
+  cmd.subscribe(id => {
+    db.collection('todoList').doc(id).get()
+      .then(todo => {
+        if(todo.exists) {
+          sub.send({
+            id,
+            title : todo.data().title,
+            description : todo.data().description
+          })
+        } else {
+          sub.send({
+            id : '',
+            title : '',
+            description : ''
+          })
+        }
+      })
+      .catch(error => sub.send({
+        id : '',
+        title : '',
+        description : ''
+      }))
+  })
+})
+
+app.ports.sendUpdateRequest.subscribe(({ id, title, description }) => {
+  const updateTodo = db.collection('todoList').doc(id)
+  updateTodo.update({
+    title,
+    description
+  })
+  .then(() => app.ports.getUpdateResult.send(true))
+  .catch(() => app.ports.getUpdateResult.send(false))
 })
 
 app.ports.showMessage.subscribe(message => alert(message))
-
 
 firebase.auth().onAuthStateChanged(user => {
   if(user) {
