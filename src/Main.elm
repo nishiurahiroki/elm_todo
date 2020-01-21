@@ -14,7 +14,7 @@ type alias Model =
   {
     key : Nav.Key,
     url : Url.Url,
-    addTodoModel : AddTodoModel,
+    addTodoModel : AddModel,
     searchModel : SearchModel,
     detailModel : DetailModel,
     loginModel : LoginModel,
@@ -28,7 +28,7 @@ type alias LoginModel =
     isLoginSuccess : Bool
   }
 
-type alias AddTodoModel =
+type alias AddModel =
   {
     title : String,
     description : String
@@ -63,7 +63,7 @@ type alias TodoListItem =
   }
 
 port sendLoginRequest : LoginModel -> Cmd msg
-port addTodo : AddTodoModel -> Cmd msg
+port addTodo : AddModel -> Cmd msg
 port showMessage : String -> Cmd msg
 port sendSearchRequest : SearchModel -> Cmd msg
 port sendDeleteRequest : String -> Cmd msg
@@ -347,7 +347,6 @@ view model =
 viewLogin : Model -> Html Msg
 viewLogin model =
   let
-    _ = Debug.log "test" model.loginModel.isLoginSuccess
     errorMessageText = if model.loginModel.isLoginSuccess then text "" else div [] [ text "ログインに失敗しました" ]
   in
     div []
