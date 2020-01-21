@@ -8,13 +8,16 @@ import Html.Events exposing (..)
 import Url
 import Url.Parser exposing (Parser, (</>),(<?>),  int, map, oneOf, s, string, top)
 import Url.Parser.Query as Query
+import File exposing (File)
+import File.Select as Select
+import Task
 
 
 type alias Model =
   {
     key : Nav.Key,
     url : Url.Url,
-    addTodoModel : AddModel,
+    addModel : AddModel,
     searchModel : SearchModel,
     detailModel : DetailModel,
     loginModel : LoginModel,
@@ -31,7 +34,8 @@ type alias LoginModel =
 type alias AddModel =
   {
     title : String,
-    description : String
+    description : String,
+    imageUrlString : String
   }
 
 type alias SearchModel =
@@ -120,7 +124,10 @@ type Msg =
   ShowTodoDetail DetailModel |
   ShowTodoEdit EditModel |
   UpdateTodo |
-  ShowUpdateResult Bool
+  ShowUpdateResult Bool |
+  RequestTodoImageFile |
+  SelectTodoImageFile File |
+  GetImageFileUrl String
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url key =
@@ -133,9 +140,10 @@ init flags url key =
         password = "",
         isLoginSuccess = True
       },
-      addTodoModel = {
+      addModel = {
         title = "",
-        description = ""
+        description = "",
+        imageUrlString = ""
       },
       searchModel = {
         title = "",
@@ -160,7 +168,7 @@ init flags url key =
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   let
-    { addTodoModel, searchModel, loginModel, editModel, detailModel } = model
+    { addModel, searchModel, loginModel, editModel, detailModel } = model
   in
     case msg of
       LinkClicked urlRequest ->
@@ -210,8 +218,8 @@ update msg model =
       InputAddTodoTitle title ->
         ({
           model |
-            addTodoModel = {
-              addTodoModel |
+            addModel = {
+              addModel |
               title = title
             }
         }, Cmd.none)
@@ -219,8 +227,8 @@ update msg model =
       InputAddTodoDescription description ->
         ({
           model |
-            addTodoModel = {
-              addTodoModel |
+            addModel = {
+              addModel |
               description = description
             }
         }, Cmd.none)
@@ -253,7 +261,7 @@ update msg model =
           )
 
       AddTodo title description ->
-        (model, addTodo { title = title, description = description })
+        (model, addTodo { title = title, description = description, imageUrlString = "" })
 
       DeleteTodo id ->
         (model, sendDeleteRequest id)
@@ -264,9 +272,10 @@ update msg model =
       AddFinishedTodo isAddSuccess ->
         if isAddSuccess then
           ({
-            model | addTodoModel = {
+            model | addModel = {
               title = "",
-              description = ""
+              description = "",
+              imageUrlString = ""
             }
           }, Cmd.batch [
             showMessage "登録に成功しました",
@@ -312,6 +321,20 @@ update msg model =
           ])
         else
           (model, showMessage "更新に失敗しました")
+
+      RequestTodoImageFile ->
+        (model, Select.file ["image/jpg", "image/png", "image/jpeg"] SelectTodoImageFile )
+
+      SelectTodoImageFile image -> -- TODO
+        (model, Task.perform GetImageFileUrl <| File.toUrl image)
+
+      GetImageFileUrl imageUrl ->
+        ({model |
+            addModel = {
+              addModel |
+                imageUrlString = imageUrl
+            }
+        }, Cmd.none)
 
 
 view : Model -> Html Msg
@@ -406,18 +429,18 @@ viewAdd model =
     div [] [
       div [] [
         text "TODOタイトル : ",
-        input [ type_ "text", onInput InputAddTodoTitle, value model.addTodoModel.title ] []
+        input [ type_ "text", onInput InputAddTodoTitle, value model.addModel.title ] []
       ],
       div [] [
         text "TODO説明 : ",
-        textarea [ rows 8, cols 80, onInput InputAddTodoDescription, value model.addTodoModel.description ] []
+        textarea [ rows 8, cols 80, onInput InputAddTodoDescription, value model.addModel.description ] []
       ],
       div [] [
-        text "画像登録 : ", -- TODO
-        input [ type_ "file" ] []
+        text "画像登録 : ",
+        button [ onClick RequestTodoImageFile ] [ text "ファイル選択" ]
       ],
       div [] [
-        button [ onClick <| AddTodo model.addTodoModel.title model.addTodoModel.description ] [ text "登録" ]
+        button [ onClick <| AddTodo model.addModel.title model.addModel.description ] [ text "登録" ]
       ]
     ]
   ]

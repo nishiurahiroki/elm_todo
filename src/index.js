@@ -3,12 +3,14 @@ import { Elm } from './Main'
 import * as firebase from 'firebase/app'
 import 'firebase/auth'
 import 'firebase/firestore'
+import 'firebase/storage'
 
 import firebaseConfig from './js/firebase/Config.js'
 
 firebase.initializeApp(firebaseConfig)
 
 const db = firebase.firestore()
+const storageRef = firebase.storage().ref()
 
 const app = Elm.Main.init()
 
@@ -107,6 +109,11 @@ app.ports.sendUpdateRequest.subscribe(({ id, title, description }) => {
   .then(() => app.ports.getUpdateResult.send(true))
   .catch(() => app.ports.getUpdateResult.send(false))
 })
+
+// const imageRef = storageRef.child('mountains.jpg')
+// imageRef.putString(message, 'data_url').then(function(snapshot) {
+//   console.log('success!');
+// })
 
 app.ports.showMessage.subscribe(message => alert(message))
 
