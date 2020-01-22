@@ -6,7 +6,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Url
-import Url.Parser exposing (Parser, (</>),(<?>),  int, map, oneOf, s, string, top)
+import Url.Parser exposing (Parser, (</>), (<?>),  int, map, oneOf, s, string, top)
 import Url.Parser.Query as Query
 import File exposing (File)
 import File.Select as Select
@@ -49,14 +49,16 @@ type alias DetailModel =
   {
     id : String,
     title : String,
-    description : String
+    description : String,
+    imageUrl : String
   }
 
 type alias EditModel =
   {
     id : String,
     title : String,
-    description : String
+    description : String,
+    imageUrl : String
   }
 
 type alias TodoListItem =
@@ -115,7 +117,7 @@ type Msg =
   Login LoginModel |
   UrlChanged  Url.Url |
   LinkClicked Browser.UrlRequest |
-  AddTodo String String |
+  AddTodo String String String |
   DeleteTodo String |
   AddFinishedTodo Bool |
   SearchTodo String String |
@@ -153,12 +155,14 @@ init flags url key =
       detailModel = {
         id = "",
         description = "",
-        title = ""
+        title = "",
+        imageUrl = ""
       },
       editModel = {
         id = "",
         description = "",
-        title = ""
+        title = "",
+        imageUrl = ""
       }
     },
     Cmd.none
@@ -260,8 +264,8 @@ update msg model =
             Cmd.none
           )
 
-      AddTodo title description ->
-        (model, addTodo { title = title, description = description, imageUrlString = "" })
+      AddTodo title description imageUrlString ->
+        (model, addTodo { title = title, description = description, imageUrlString = imageUrlString })
 
       DeleteTodo id ->
         (model, sendDeleteRequest id)
@@ -440,7 +444,7 @@ viewAdd model =
         button [ onClick RequestTodoImageFile ] [ text "ファイル選択" ]
       ],
       div [] [
-        button [ onClick <| AddTodo model.addModel.title model.addModel.description ] [ text "登録" ]
+        button [ onClick <| AddTodo model.addModel.title model.addModel.description model.addModel.imageUrlString ] [ text "登録" ]
       ]
     ]
   ]
@@ -505,6 +509,9 @@ viewDetail model =
       ],
       div [] [
         text <| "TODO 説明" ++ model.detailModel.description
+      ],
+      div [] [
+        img [ src model.detailModel.imageUrl ] []
       ]
     ],
     div [] [

@@ -32,12 +32,16 @@ app.ports.sendLoginRequest.subscribe(({ userId, password }) => {
   })
 })
 
-app.ports.addTodo.subscribe(({title, description}) => {
+app.ports.addTodo.subscribe(({title, description, imageUrlString}) => {
   db.collection('todoList').add({
     title,
     description
   })
-  .then(()  => app.ports.getAddTodoResult.send(true))
+  .then(({id})  => {
+    storageRef.child(`${id}.png`).putString(imageUrlString, 'data_url')
+      .then(() => app.ports.getAddTodoResult.send(true))
+      .catch(() => app.ports.getAddTodoResult.send(false))
+  })
   .catch(() => app.ports.getAddTodoResult.send(false))
 })
 
@@ -59,6 +63,7 @@ app.ports.sendSearchRequest.subscribe(({id, description}) => {
 
 app.ports.sendDeleteRequest.subscribe(id => {
   db.collection('todoList').doc(id).delete()
+    .then(() => storageRef.child(`${id}.png`).delete())
     .then(() => app.ports.getDeleteTodoResult.send(true))
     .catch(() => app.ports.getDeleteTodoResult.send(false))
 })
@@ -79,11 +84,17 @@ GET_TODO_PORTS.forEach(({sub, cmd}) => {
     db.collection('todoList').doc(id).get()
       .then(todo => {
         if(todo.exists) {
-          sub.send({
-            id,
-            title : todo.data().title,
-            description : todo.data().description
-          })
+          storageRef
+            .child(`${id}.png`)
+            .getDownloadURL()
+            .then(url => {
+              sub.send({
+                id,
+                title : todo.data().title,
+                description : todo.data().description,
+                imageUrl : url
+              })
+            })
         } else {
           sub.send({
             id : '',
@@ -109,11 +120,6 @@ app.ports.sendUpdateRequest.subscribe(({ id, title, description }) => {
   .then(() => app.ports.getUpdateResult.send(true))
   .catch(() => app.ports.getUpdateResult.send(false))
 })
-
-// const imageRef = storageRef.child('mountains.jpg')
-// imageRef.putString(message, 'data_url').then(function(snapshot) {
-//   console.log('success!');
-// })
 
 app.ports.showMessage.subscribe(message => alert(message))
 
