@@ -32,7 +32,7 @@ app.ports.sendLoginRequest.subscribe(({ userId, password }) => {
   })
 })
 
-app.ports.addTodo.subscribe(({title, description, imageUrlString}) => {
+app.ports.sendAddRequest.subscribe(({title, description, imageUrlString}) => {
   db.collection('todoList').add({
     title,
     description

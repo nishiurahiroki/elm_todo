@@ -69,7 +69,7 @@ type alias TodoListItem =
   }
 
 port sendLoginRequest : LoginModel -> Cmd msg
-port addTodo : AddModel -> Cmd msg
+port sendAddRequest : AddModel -> Cmd msg
 port showMessage : String -> Cmd msg
 port sendSearchRequest : SearchModel -> Cmd msg
 port sendDeleteRequest : String -> Cmd msg
@@ -265,7 +265,7 @@ update msg model =
           )
 
       AddTodo title description imageUrlString ->
-        (model, addTodo { title = title, description = description, imageUrlString = imageUrlString })
+        (model, sendAddRequest { title = title, description = description, imageUrlString = imageUrlString })
 
       DeleteTodo id ->
         (model, sendDeleteRequest id)
