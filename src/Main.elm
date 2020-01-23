@@ -407,7 +407,7 @@ addHeader content =
           a [ href "/add" ] [ text "追加画面" ]
         ],
         li [] [
-          a [ href "/logout" ] [ text "ログアウト" ]
+          a [ href "/" ] [ text "ログアウト" ]
         ]
       ]
     ],
