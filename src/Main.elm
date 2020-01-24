@@ -329,7 +329,7 @@ update msg model =
       RequestTodoImageFile ->
         (model, Select.file ["image/jpg", "image/png", "image/jpeg"] SelectTodoImageFile )
 
-      SelectTodoImageFile image -> -- TODO
+      SelectTodoImageFile image ->
         (model, Task.perform GetImageFileUrl <| File.toUrl image)
 
       GetImageFileUrl imageUrl ->
