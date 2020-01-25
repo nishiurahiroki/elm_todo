@@ -332,11 +332,11 @@ update msg model =
       SelectTodoImageFile image ->
         (model, Task.perform GetImageFileUrl <| File.toUrl image)
 
-      GetImageFileUrl imageUrl ->
+      GetImageFileUrl imageUrlString ->
         ({model |
             addModel = {
               addModel |
-                imageUrlString = imageUrl
+                imageUrlString = imageUrlString
             }
         }, Cmd.none)
 
